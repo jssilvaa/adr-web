@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Active Disturbance Rejection for Humanoid Balance</title>
+  <meta name="description" content="An interactive companion: estimating and rejecting external disturbances on a whole-body NMPC humanoid, with the analysis running live in WebAssembly." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet" />
+  <script type="module" crossorigin src="/adr-web/assets/index-zMpqHJwU.js"></script>
+  <link rel="stylesheet" crossorigin href="/adr-web/assets/index-DWPedL44.css">
+</head>
+<body>
+  <header class="nav" id="nav">
+    <a class="nav__brand" href="#top">ADR<span>·</span>humanoid balance</a>
+    <nav class="nav__links">
+      <a href="#problem">Problem</a>
+      <a href="#system">System</a>
+      <a href="#elegance">Elegance</a>
+      <a href="#results">Results</a>
+      <a href="#replay">3D</a>
+      <a href="#read">Paper</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <!-- HERO ------------------------------------------------------------- -->
+    <section class="hero">
+      <div class="hero__inner">
+        <p class="eyebrow">Whole-body NMPC · disturbance estimation · capturability</p>
+        <h1 class="hero__title">Keeping a humanoid on its feet<br />when the world pushes back.</h1>
+        <p class="hero__lede">
+          A 35-state nonlinear MPC balances the Unitree&nbsp;G1 in real time. We add a
+          6-D wrench <em>observer</em> and an active rejection layer, and show — in theory and in
+          simulation — exactly <em>why</em> they work. The analysis reduces to one constant and one
+          saturation; below, it runs live in WebAssembly.
+        </p>
+        <div class="hero__stats">
+          <div><span class="stat__num">&omega; = 3.52</span><span class="stat__lab">rad/s · the only constant that matters</span></div>
+          <div><span class="stat__num">4.9 ms</span><span class="stat__lab">median MPC solve · 80 Hz budget 12.5 ms</span></div>
+          <div><span class="stat__num">70&rarr;100 N</span><span class="stat__lab">in-place envelope, observer feedforward</span></div>
+          <div><span class="stat__num">&times;2</span><span class="stat__lab">push envelope with reactive stepping</span></div>
+        </div>
+        <a class="hero__cta" href="#sandbox">Push the robot &darr;</a>
+      </div>
+    </section>
+
+    <!-- LIVE SANDBOX ----------------------------------------------------- -->
+    <section class="section" id="sandbox">
+      <div class="section__head">
+        <span class="kicker">Live · WebAssembly</span>
+        <h2>Push it yourself.</h2>
+        <p class="section__sub">
+          This is the linear-inverted-pendulum reduction the analysis is built on, compiled from the
+          project's C++ to WebAssembly: the real cascaded momentum observer, the capturability CoP law
+          saturated to the foot, and reactive stepping. Drag the torso, or use the buttons, and watch
+          the divergent component (the capture point) leave and re-enter the support.
+        </p>
+      </div>
+      <div id="sandbox-mount" class="sandbox"></div>
+    </section>
+
+    <!-- FULL-ROBOT MUJOCO SANDBOX --------------------------------------- -->
+    <section class="section" id="robot">
+      <div class="section__head">
+        <span class="kicker">Live · MuJoCo in WebAssembly</span>
+        <h2>…and on the full robot.</h2>
+        <p class="section__sub">
+          The same idea, no longer reduced: the actual 29-DoF Unitree&nbsp;G1 in the real MuJoCo engine,
+          compiled to WebAssembly and stepping in your browser at its native rate. The base is mounted and
+          the joints are PD-held — shove the torso and watch the upper body comply and spring back in real
+          multibody physics. (Free-standing balance is the research MPC, which is far too heavy for a
+          browser — that result lives in the 3D replay below.)
+        </p>
+      </div>
+      <div id="robot-mount" class="sandbox"></div>
+    </section>
+
+    <!-- PROBLEM ---------------------------------------------------------- -->
+    <section class="section" id="problem">
+      <div class="section__head">
+        <span class="kicker">The problem</span>
+        <h2>A humanoid is a pendulum that must not fall.</h2>
+        <p class="section__sub">
+          Standing on a small foot, the robot balances its mass above a narrow base. The unstable
+          part of that dynamics is a single scalar — the divergent component of motion, the
+          <em>capture point</em>. Balance is exactly the task of keeping it over the support. A push,
+          noisy contact sensing, and the geometry of a 17&nbsp;cm foot conspire against you: when the
+          capture point leaves the support, the robot either steps to catch it, or falls.
+        </p>
+      </div>
+      <div class="gif-tri">
+        <figure class="fig fig--media">
+          <img src="/adr-web/assets/gif/a_baseline.gif" alt="baseline controller falls under a push" loading="lazy" />
+          <figcaption><b>Without rejection.</b> A 110&nbsp;N push, balance controller alone: the capture point leaves the foot and the robot goes down.</figcaption>
+        </figure>
+        <figure class="fig fig--media">
+          <img src="/adr-web/assets/gif/a_observer.gif" alt="observer feedforward recovers in place" loading="lazy" />
+          <figcaption><b>Reject in place.</b> The same push, with the disturbance estimated and fed forward — absorbed where it stands, no step needed.</figcaption>
+        </figure>
+        <figure class="fig fig--media">
+          <img src="/adr-web/assets/gif/step200.gif" alt="reactive stepping catches a larger push" loading="lazy" />
+          <figcaption><b>Step to catch it.</b> A 200&nbsp;N push — too large to absorb in place. A capturability-triggered step moves the support under the capture point.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- SYSTEM ----------------------------------------------------------- -->
+    <section class="section" id="system">
+      <div class="section__head">
+        <span class="kicker">The system</span>
+        <h2>Three layers, one real-time loop.</h2>
+        <p class="section__sub">
+          A whole-body nonlinear MPC plans the motion; a momentum observer infers the unmodelled
+          push; an active layer feeds that estimate forward and, when needed, commands a step. All of
+          it closes the loop on the physical robot at hardware rates.
+        </p>
+      </div>
+      <div class="cards3">
+        <div class="card">
+          <span class="card__n">01</span><h3>Centroidal NMPC</h3>
+          <p>35-state model (centroidal momentum + whole-body kinematics), 1.2&nbsp;s horizon, transcribed by multiple shooting and solved with SQP on HPIPM. Replans at 80&nbsp;Hz.</p>
+        </div>
+        <div class="card">
+          <span class="card__n">02</span><h3>6-D wrench observer</h3>
+          <p>A cascaded centroidal-momentum observer reconstructs the external wrench from measured momentum and contact forces — a triple pole that detects a push in ~24&nbsp;ms.</p>
+        </div>
+        <div class="card">
+          <span class="card__n">03</span><h3>Active rejection</h3>
+          <p>The estimate is fed forward into the momentum-rate equation; when the capture point still escapes, a capturability-triggered step is committed. Together they roughly double the push envelope.</p>
+        </div>
+      </div>
+      <div class="sys-row">
+        <figure class="sys-arch">
+          <div id="arch-mount"></div>
+          <figcaption>The closed loop in real time: an asynchronous NMPC planner thread feeds a 500&nbsp;Hz control loop that evaluates the policy, runs the observer and the step trigger, and drives the robot — the wrench estimate fed back as feedforward.</figcaption>
+        </figure>
+        <figure class="fig fig--dark sys-timing">
+          <img src="/adr-web/assets/fig/fig_mpc_timing.png" alt="MPC per-solve computation time distribution" loading="lazy" />
+          <figcaption>Per-solve computation time across 8000 solves. Median 4.9&nbsp;ms — comfortably inside the 12.5&nbsp;ms budget of the 80&nbsp;Hz loop.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ELEGANCE --------------------------------------------------------- -->
+    <section class="section" id="elegance">
+      <div class="section__head">
+        <span class="kicker">The elegance</span>
+        <h2>One constant, one saturation.</h2>
+        <p class="section__sub">
+          Project the closed loop onto the horizontal plane and it collapses to a linear inverted
+          pendulum with a single time constant, &omega;&nbsp;=&nbsp;&radic;(g/h)&nbsp;=&nbsp;3.52&nbsp;rad/s.
+          Three results follow from that one number and the geometry of the foot — and each is
+          something you just felt in the sandbox.
+        </p>
+      </div>
+      <div class="cards3">
+        <div class="card card--thm">
+          <span class="card__tag">saddle</span>
+          <h3>Why simulation isn't deterministic.</h3>
+          <p>The pendulum is a saddle: eigenvalues &plusmn;&omega;. The divergent mode has a finite-time Lyapunov exponent of exactly +&omega;, so on the recovery boundary any seed — scheduling jitter, finite-precision — grows like e<sup>+&omega;t</sup> and flips the outcome. Deep inside, runs reproduce.</p>
+          <div class="card__viz" data-mini="saddle" aria-hidden="true"></div>
+        </div>
+        <div class="card card--thm">
+          <span class="card__tag">critical regions</span>
+          <h3>Why the observer beats the oracle.</h3>
+          <p>The feedforward enters the QP only through the constraint right-hand side: the solution is piecewise-affine in the estimate. Push hard and the CoP hits the forefoot facet — a critical-region boundary. The oracle's full-magnitude command over-commits past it; the band-limited observer stays inside, and recovers further.</p>
+          <div class="card__viz" data-mini="critical" aria-hidden="true"></div>
+        </div>
+        <div class="card card--thm">
+          <span class="card__tag">level crossings</span>
+          <h3>Why the step trigger has a noise floor.</h3>
+          <p>The step fires when a monitored signal crosses a level. Under noise, false crossings follow a Kac–Rice floor &nu;<sup>+</sup>&nbsp;=&nbsp;(&Omega;<sub>R</sub>/2&pi;)e<sup>&minus;z&sup2;/2</sup>, set by the signal's spectral width — not by &omega;. A filtered-velocity gate raises the margin and collapses that rate.</p>
+          <div class="card__viz" data-mini="rice" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="thm-stack">
+        <div class="thm">
+          <div class="thm__head">
+            <span class="card__tag">saddle · live</span>
+            <h3>Sensitive dependence on the recovery boundary</h3>
+            <p>The divergent coordinate is the capture point ξ, with ξ̇ = ω·ξ — a pure +ω mode. Launch a fan of near-identical seeds: deep inside the boundary they all recover and runs reproduce; on the line ξ = x_front the seed is amplified past the foot edge and the outcome becomes a coin-flip.</p>
+          </div>
+          <div id="w-saddle" class="sandbox"></div>
+        </div>
+
+        <div class="thm">
+          <div class="thm__head">
+            <span class="card__tag">critical regions · live</span>
+            <h3>Band-limiting keeps the feedforward off the facet</h3>
+            <p>The feedforward enters the QP only through the constraint right-hand side, so the control is piecewise-affine in it. The cascaded observer band-limits a sharp push into a lower-peak estimate — and a lower peak stays in the productive region instead of over-committing past the foot facet.</p>
+          </div>
+          <div id="w-critical" class="sandbox"></div>
+        </div>
+
+        <div class="thm">
+          <div class="thm__head">
+            <span class="card__tag">level crossings · live</span>
+            <h3>The step trigger has a Kac–Rice noise floor</h3>
+            <p>Under noise the monitored signal crosses the trigger level at a rate ν⁺ = (Ω_R/2π)·e<sup>−z²/2</sup>, set by the margin in standard deviations z = u/σ. Raise the margin — what the filtered-velocity gate does — and the floor collapses exponentially.</p>
+          </div>
+          <div id="w-rice" class="sandbox"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTS ---------------------------------------------------------- -->
+    <section class="section" id="results">
+      <div class="section__head">
+        <span class="kicker">The evidence</span>
+        <h2>Recovery, measured.</h2>
+        <p class="section__sub">
+          Closed-loop on the full robot in simulation. Frame-by-frame: the same disturbance fails
+          without rejection, recovers in place with the observer, and is caught by a step when it is
+          too large to absorb.
+        </p>
+      </div>
+      <figure class="strip"><img src="/adr-web/assets/strip/strip_baseline.png" alt="baseline fall sequence" loading="lazy" /><figcaption>Baseline — 110&nbsp;N — falls.</figcaption></figure>
+      <figure class="strip"><img src="/adr-web/assets/strip/strip_observer.png" alt="observer recovery sequence" loading="lazy" /><figcaption>Observer feedforward — 110&nbsp;N — recovers in place.</figcaption></figure>
+      <figure class="strip"><img src="/adr-web/assets/strip/strip_step200.png" alt="reactive stepping sequence" loading="lazy" /><figcaption>Reactive stepping — 200&nbsp;N — balance &rarr; step &rarr; balance.</figcaption></figure>
+
+      <h3 class="sub-h">Envelopes &amp; robustness</h3>
+      <div class="fig-grid">
+        <figure class="fig"><img src="/adr-web/assets/fig/fig_b2_sagittal.png" alt="" loading="lazy" /><figcaption>In-place recovery vs push: observer feedforward extends the envelope and beats the oracle (M&nbsp;=&nbsp;20, Wilson&nbsp;95%).</figcaption></figure>
+        <figure class="fig"><img src="/adr-web/assets/fig/fig_b3_envelope.png" alt="" loading="lazy" /><figcaption>Reactive stepping roughly doubles the sagittal envelope; lateral is neutral (a wide base already absorbs it).</figcaption></figure>
+        <figure class="fig"><img src="/adr-web/assets/fig/fig_b4_observer.png" alt="" loading="lazy" /><figcaption>The observer is robust to contact-force noise: relative error and detection delay stay flat across &sigma;.</figcaption></figure>
+        <figure class="fig"><img src="/adr-web/assets/fig/fig_b4_final.png" alt="" loading="lazy" /><figcaption>The deployable stack under sensor noise: the filtered-velocity gate recovers the noise-free performance.</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- 3D REPLAY -------------------------------------------------------- -->
+    <section class="section" id="replay">
+      <div class="section__head">
+        <span class="kicker">Inspect it · 3D</span>
+        <h2>Walk around the recovery.</h2>
+        <p class="section__sub">
+          The same body poses the simulator computed, replayed in your browser. Orbit, scrub the
+          timeline, change speed, or switch the disturbance — the fall, the in-place recovery, and the
+          reactive step, from any angle.
+        </p>
+      </div>
+      <div id="replay-mount" class="sandbox"></div>
+    </section>
+
+    <!-- READ ------------------------------------------------------------- -->
+    <section class="section" id="read">
+      <div class="section__head">
+        <span class="kicker">Read more</span>
+        <h2>The full account.</h2>
+      </div>
+      <div class="read-cards">
+        <a class="read-card" href="/adr-web/assets/report.pdf" target="_blank" rel="noopener">
+          <span class="read-card__k">PDF</span>
+          <h3>Project report &rarr;</h3>
+          <p>The complete write-up: model, observer, active rejection, experimental protocol and results.</p>
+        </a>
+        <a class="read-card" href="#elegance">
+          <span class="read-card__k">INTERACTIVE</span>
+          <h3>The analysis, live &uarr;</h3>
+          <p>The three results that carry the argument — the LIPM saddle, Kac–Rice level crossings, and the multi-parametric QP behind the feedforward — each as a demonstration you can drive yourself.</p>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Active Disturbance Rejection for Humanoid Balance</span>
+    <span>Interactive companion · built from the project's C++ via WebAssembly</span>
+  </footer>
+
+  <script src="/adr-web/adr_core.js"></script>
+</body>
+</html>
