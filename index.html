@@ -29,15 +29,13 @@
     <section class="hero">
       <div class="hero__inner">
         <p class="eyebrow">Whole-body NMPC · disturbance estimation · capturability</p>
-        <h1 class="hero__title">Keeping a humanoid on its feet<br />when the world pushes back.</h1>
+        <h1 class="hero__title">Active Disturbance Rejection<br />in biped humanoids.</h1>
         <p class="hero__lede">
           A 35-state nonlinear MPC balances the Unitree&nbsp;G1 in real time. We add a
-          6-D wrench <em>observer</em> and an active rejection layer, and show — in theory and in
-          simulation — exactly <em>why</em> they work. The analysis reduces to one constant and one
-          saturation; below, it runs live in WebAssembly.
+          6D wrench <em>observer</em> and an active rejection layer, and show, in theory and in simulation, exactly <em>why</em> they work. The analysis reduces to one constant and one saturation. Runs live in WebAssembly.
         </p>
         <div class="hero__stats">
-          <div><span class="stat__num">&omega; = 3.52</span><span class="stat__lab">rad/s · the only constant that matters</span></div>
+          <div><span class="stat__num">&omega; = 3.52</span><span class="stat__lab">rad/s · the LIPM angular velocity</span></div>
           <div><span class="stat__num">4.9 ms</span><span class="stat__lab">median MPC solve · 80 Hz budget 12.5 ms</span></div>
           <div><span class="stat__num">70&rarr;100 N</span><span class="stat__lab">in-place envelope, observer feedforward</span></div>
           <div><span class="stat__num">&times;2</span><span class="stat__lab">push envelope with reactive stepping</span></div>
@@ -52,10 +50,7 @@
         <span class="kicker">Live · WebAssembly</span>
         <h2>Push it yourself.</h2>
         <p class="section__sub">
-          This is the linear-inverted-pendulum reduction the analysis is built on, compiled from the
-          project's C++ to WebAssembly: the real cascaded momentum observer, the capturability CoP law
-          saturated to the foot, and reactive stepping. Drag the torso, or use the buttons, and watch
-          the divergent component (the capture point) leave and re-enter the support.
+          This is the linear-inverted-pendulum reduction the analysis is built on: the real cascaded momentum observer, the capturability CoP law saturated to the foot, and reactive stepping. Drag the torso, or use the buttons, and watch the divergent component (the capture point) leave and re-enter the support.
         </p>
       </div>
       <div id="sandbox-mount" class="sandbox"></div>
@@ -67,11 +62,7 @@
         <span class="kicker">Live · MuJoCo in WebAssembly</span>
         <h2>…and on the full robot.</h2>
         <p class="section__sub">
-          The same idea, no longer reduced: the actual 29-DoF Unitree&nbsp;G1 in the real MuJoCo engine,
-          compiled to WebAssembly and stepping in your browser at its native rate. The base is mounted and
-          the joints are PD-held — shove the torso and watch the upper body comply and spring back in real
-          multibody physics. (Free-standing balance is the research MPC, which is far too heavy for a
-          browser — that result lives in the 3D replay below.)
+          The same idea, no longer reduced: the actual 29-DoF Unitree&nbsp;G1. The base is mounted and the joints are PD-held — shove the torso and watch the upper body comply and spring back in real multibody physics.
         </p>
       </div>
       <div id="robot-mount" class="sandbox"></div>
@@ -83,11 +74,7 @@
         <span class="kicker">The problem</span>
         <h2>A humanoid is a pendulum that must not fall.</h2>
         <p class="section__sub">
-          Standing on a small foot, the robot balances its mass above a narrow base. The unstable
-          part of that dynamics is a single scalar — the divergent component of motion, the
-          <em>capture point</em>. Balance is exactly the task of keeping it over the support. A push,
-          noisy contact sensing, and the geometry of a 17&nbsp;cm foot conspire against you: when the
-          capture point leaves the support, the robot either steps to catch it, or falls.
+          Standing on a small foot, the robot balances its mass above a narrow base. The unstable part of that dynamics is a single scalar — the divergent component of motion, the <em>capture point</em>. Balance is exactly the task of keeping it over the support. A push, noisy contact sensing, and the geometry of a 17&nbsp;cm foot work against recovery: when the capture point leaves the support, the robot either steps to catch it, or falls.
         </p>
       </div>
       <div class="gif-tri">
@@ -151,8 +138,7 @@
         <p class="section__sub">
           Project the closed loop onto the horizontal plane and it collapses to a linear inverted
           pendulum with a single time constant, &omega;&nbsp;=&nbsp;&radic;(g/h)&nbsp;=&nbsp;3.52&nbsp;rad/s.
-          Three results follow from that one number and the geometry of the foot — and each is
-          something you just felt in the sandbox.
+          Three results follow from that one number and the geometry of the foot.
         </p>
       </div>
       <div class="cards3">
